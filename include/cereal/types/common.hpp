@@ -32,6 +32,10 @@
 
 #include "cereal/cereal.hpp"
 
+#if __has_include("magic_enum.hpp") && !defined(CEREAL_DONT_USE_MAGIC_ENUM)
+  #include "magic_enum.hpp"
+#endif
+
 namespace cereal
 {
   namespace common_detail
@@ -88,6 +92,45 @@ namespace cereal
     };
   }
 
+#if __has_include("magic_enum.hpp") && !defined(CEREAL_DONT_USE_MAGIC_ENUM)
+  //! Saving for enum types in text
+  template <class Archive, cereal::traits::EnableIf<cereal::traits::is_text_archive<Archive>::value>
+            = cereal::traits::sfinae, class T> inline
+  std::enable_if_t<std::is_enum_v<T>, std::string>
+  CEREAL_SAVE_MINIMAL_FUNCTION_NAME( Archive &, const T& h )
+  {
+    return std::string(magic_enum::enum_name(h));
+  }
+
+  //! Loading for enum types in text
+  template <class Archive, cereal::traits::EnableIf<cereal::traits::is_text_archive<Archive>::value>
+            = cereal::traits::sfinae, class T> inline
+  std::enable_if_t<std::is_enum_v<T>, void>
+  CEREAL_LOAD_MINIMAL_FUNCTION_NAME( Archive const &, T& enumType, std::string const& str )
+  {
+    enumType = magic_enum::enum_cast<T>(str).value();
+  }
+
+  //! Saving for enum types in binary
+  template <class Archive, cereal::traits::DisableIf<cereal::traits::is_text_archive<Archive>::value>
+            = cereal::traits::sfinae, class T> inline
+  typename std::enable_if<common_detail::is_enum<T>::value,
+          typename common_detail::is_enum<T>::base_type>::type
+  CEREAL_SAVE_MINIMAL_FUNCTION_NAME( Archive const &, T const & t )
+  {
+      return static_cast<typename common_detail::is_enum<T>::base_type>(t);
+  }
+
+  //! Loading for enum types in binary
+  template <class Archive, cereal::traits::DisableIf<cereal::traits::is_text_archive<Archive>::value>
+            = cereal::traits::sfinae, class T> inline
+  typename std::enable_if<common_detail::is_enum<T>::value, void>::type
+  CEREAL_LOAD_MINIMAL_FUNCTION_NAME( Archive const &, T && t,
+                                     typename common_detail::is_enum<T>::base_type const & value )
+  {
+      t = reinterpret_cast<typename common_detail::is_enum<T>::type const &>( value );
+  }
+#else
   //! Saving for enum types
   template <class Archive, class T> inline
   typename std::enable_if<common_detail::is_enum<T>::value,
@@ -105,6 +148,7 @@ namespace cereal
   {
     t = reinterpret_cast<typename common_detail::is_enum<T>::type const &>( value );
   }
+#endif
 
   //! Serialization for raw pointers
   /*! This exists only to throw a static_assert to let users know we don't support raw pointers. */

@@ -19,6 +19,8 @@ option(BUILD_DOC "Build documentation" ON)
 option(BUILD_SANDBOX "Build sandbox examples" ON)
 option(SKIP_PERFORMANCE_COMPARISON "Skip building performance sandbox comparison (requires boost)" OFF)
 
+option(DONT_USE_MAGIC_ENUM "Serialize enum values to their underlying types rather than strings" OFF)
+
 # TODO: should not be needed! CK
 if(NOT CMAKE_VERSION VERSION_LESS 3.0) # installing cereal requires INTERFACE lib
     option(JUST_INSTALL_CEREAL "Don't do anything besides installing the library" OFF)
@@ -71,6 +73,10 @@ list(APPEND CEREAL_THREAD_LIBS cereal::cereal)
 
 if(NOT CMAKE_VERSION VERSION_LESS 3.8)
     target_compile_features(cereal INTERFACE cxx_std_11)
+endif()
+
+if(DONT_USE_MAGIC_ENUM)
+    target_compile_definitions(cereal INTERFACE -DCEREAL_DONT_USE_MAGIC_ENUM)
 endif()
 
 
